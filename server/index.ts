@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
+import MemoryStore from "memorystore";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -18,23 +19,39 @@ declare module "http" {
   }
 }
 
-// Initialize PostgreSQL session store for persistent sessions across restarts
-const PgSession = connectPgSimple(session);
+// Initialize session store - PostgreSQL if DATABASE_URL is set, otherwise MemoryStore
+let sessionStore: session.Store;
 
-// Create a connection pool for sessions (uses DATABASE_URL from Render)
-const sessionPool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-});
+if (process.env.DATABASE_URL) {
+  // Use PostgreSQL for persistent sessions (recommended for production)
+  console.log("🔧 Using PostgreSQL session store");
+  const PgSession = connectPgSimple(session);
+  const sessionPool = new pg.Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+  });
 
-// Log session store status
-sessionPool.on("connect", () => {
-  console.log("✅ PostgreSQL session store connected");
-});
+  sessionPool.on("connect", () => {
+    console.log("✅ PostgreSQL session store connected");
+  });
 
-sessionPool.on("error", (err) => {
-  console.error("❌ PostgreSQL session pool error:", err);
-});
+  sessionPool.on("error", (err) => {
+    console.error("❌ PostgreSQL session pool error:", err);
+  });
+
+  sessionStore = new PgSession({
+    pool: sessionPool,
+    tableName: "user_sessions",
+    createTableIfMissing: true,
+  });
+} else {
+  // Fallback to MemoryStore (sessions lost on restart, but works without DATABASE_URL)
+  console.log("⚠️ DATABASE_URL not set - using MemoryStore (sessions will not persist across restarts)");
+  const MemStore = MemoryStore(session);
+  sessionStore = new MemStore({
+    checkPeriod: 86400000, // prune expired entries every 24h
+  });
+}
 
 app.use(
   express.json({
@@ -46,14 +63,10 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
-// Session configuration with PostgreSQL persistence
+// Session configuration
 app.use(
   session({
-    store: new PgSession({
-      pool: sessionPool,
-      tableName: "user_sessions", // Custom table name to avoid conflicts
-      createTableIfMissing: true, // Auto-create session table on startup
-    }),
+    store: sessionStore,
     secret: process.env.SESSION_SECRET || "finance-buddy-secret-key-change-in-prod",
     resave: false,
     saveUninitialized: false,
