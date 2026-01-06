@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 interface MiniCalculatorProps {
   onResult?: (result: number) => void;
   showConvert?: boolean;
+  compact?: boolean;
 }
 
 // Decimal-safe arithmetic using cents (integers)
@@ -17,7 +18,7 @@ const safeMul = (a: number, b: number) => Math.round(a * b * 100) / 100;
 const safeDiv = (a: number, b: number) => b === 0 ? 0 : Math.round((a / b) * 100) / 100;
 const safePercent = (a: number, b: number) => Math.round((a * b)) / 100;
 
-export function MiniCalculator({ onResult, showConvert = true }: MiniCalculatorProps) {
+export function MiniCalculator({ onResult, showConvert = true, compact = false }: MiniCalculatorProps) {
   const [display, setDisplay] = useState('0');
   const [previousValue, setPreviousValue] = useState<number | null>(null);
   const [operation, setOperation] = useState<string | null>(null);
@@ -182,8 +183,8 @@ export function MiniCalculator({ onResult, showConvert = true }: MiniCalculatorP
 
   return (
     <Card className="w-full">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center justify-between">
+      <CardHeader className={compact ? "pb-2 pt-3" : "pb-3"}>
+        <CardTitle className={compact ? "text-sm flex items-center justify-between" : "text-lg flex items-center justify-between"}>
           Quick Calculator
           <span className="text-xs text-muted-foreground font-normal">
             Use keyboard ↵
@@ -191,9 +192,9 @@ export function MiniCalculator({ onResult, showConvert = true }: MiniCalculatorP
         </CardTitle>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className={compact ? "space-y-2 p-3 pt-0" : "space-y-4"}>
         {/* Display */}
-        <div className="bg-muted p-4 rounded-lg">
+        <div className={compact ? "bg-muted p-2 rounded-lg" : "bg-muted p-4 rounded-lg"}>
           <div className="flex items-center justify-between gap-2">
             <div className="text-xs text-muted-foreground">
               {previousValue !== null && operation && (
@@ -203,20 +204,20 @@ export function MiniCalculator({ onResult, showConvert = true }: MiniCalculatorP
             <Button
               size="icon"
               variant="ghost"
-              className="h-6 w-6"
+              className="h-5 w-5"
               onClick={handleBackspace}
               title="Backspace"
             >
               <Delete className="h-3 w-3" />
             </Button>
           </div>
-          <div className="text-right text-3xl font-bold font-mono break-words">
+          <div className={compact ? "text-right text-xl font-bold font-mono break-words" : "text-right text-3xl font-bold font-mono break-words"}>
             {display}
           </div>
         </div>
 
         {/* Calculator Grid */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 gap-1.5">
           {buttons.map((row) =>
             row.map((btn) => (
               <Button
@@ -230,7 +231,7 @@ export function MiniCalculator({ onResult, showConvert = true }: MiniCalculatorP
                   else if (btn === '.') handleDecimal();
                   else handleNumber(btn);
                 }}
-                className="font-semibold h-10"
+                className={compact ? "font-semibold h-8 text-xs" : "font-semibold h-10"}
               >
                 {btn === '×' ? 'x' : btn === '÷' ? '/' : btn}
               </Button>
@@ -239,103 +240,107 @@ export function MiniCalculator({ onResult, showConvert = true }: MiniCalculatorP
         </div>
 
         {/* Clear and Copy */}
-        <div className="flex gap-2">
+        <div className="flex gap-1.5">
           <Button
             size="sm"
             variant="outline"
             onClick={handleClear}
-            className="flex-1"
+            className={compact ? "flex-1 h-7 text-xs" : "flex-1"}
           >
-            <RotateCcw className="h-4 w-4 mr-2" />
+            <RotateCcw className={compact ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"} />
             Clear
           </Button>
           <Button
             size="sm"
             variant="outline"
             onClick={handleCopy}
-            className="flex-1"
+            className={compact ? "flex-1 h-7 text-xs" : "flex-1"}
           >
             {copied ? (
               <>
-                <Check className="h-4 w-4 mr-2" />
+                <Check className={compact ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"} />
                 Copied
               </>
             ) : (
               <>
-                <Copy className="h-4 w-4 mr-2" />
+                <Copy className={compact ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"} />
                 Copy
               </>
             )}
           </Button>
         </div>
 
-        {/* Tip Calculator */}
-        <div className="space-y-2 border-t pt-3">
-          <label className="text-xs font-medium">Tip {tipPercent}%</label>
-          <div className="flex gap-2">
-            <input
-              type="range"
-              min="0"
-              max="50"
-              step="1"
-              value={tipPercent}
-              onChange={(e) => setTipPercent(parseInt(e.target.value))}
-              className="flex-1"
-              aria-label="Tip percentage"
-            />
-            <span className="text-sm font-mono w-10 text-right">{tipPercent}%</span>
+        {/* Tip Calculator - hide in compact mode */}
+        {!compact && (
+          <div className="space-y-2 border-t pt-3">
+            <label className="text-xs font-medium">Tip {tipPercent}%</label>
+            <div className="flex gap-2">
+              <input
+                type="range"
+                min="0"
+                max="50"
+                step="1"
+                value={tipPercent}
+                onChange={(e) => setTipPercent(parseInt(e.target.value))}
+                className="flex-1"
+                aria-label="Tip percentage"
+              />
+              <span className="text-sm font-mono w-10 text-right">{tipPercent}%</span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={calculateTip}
+              className="w-full"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Tip
+            </Button>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={calculateTip}
-            className="w-full"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Tip
-          </Button>
-        </div>
+        )}
 
-        {/* Split Calculator */}
-        <div className="space-y-2 border-t pt-3">
-          <label className="text-xs font-medium">Split Among</label>
-          <div className="flex gap-2">
+        {/* Split Calculator - hide in compact mode */}
+        {!compact && (
+          <div className="space-y-2 border-t pt-3">
+            <label className="text-xs font-medium">Split Among</label>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setSplitCount(Math.max(1, splitCount - 1))}
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+              <Input
+                type="number"
+                min="1"
+                value={splitCount}
+                onChange={(e) => setSplitCount(Math.max(1, parseInt(e.target.value) || 1))}
+                className="flex-1 text-center"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setSplitCount(splitCount + 1)}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setSplitCount(Math.max(1, splitCount - 1))}
+              onClick={calculateSplit}
+              className="w-full"
             >
-              <Minus className="h-4 w-4" />
-            </Button>
-            <Input
-              type="number"
-              min="1"
-              value={splitCount}
-              onChange={(e) => setSplitCount(Math.max(1, parseInt(e.target.value) || 1))}
-              className="flex-1 text-center"
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setSplitCount(splitCount + 1)}
-            >
-              <Plus className="h-4 w-4" />
+              <Users className="h-4 w-4 mr-2" />
+              Split Bill
             </Button>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={calculateSplit}
-            className="w-full"
-          >
-            <Users className="h-4 w-4 mr-2" />
-            Split Bill
-          </Button>
-        </div>
+        )}
 
         {/* Apply Button */}
         {onResult && (
-          <Button onClick={handleApply} className="w-full">
+          <Button onClick={handleApply} className={compact ? "w-full h-8 text-sm" : "w-full"}>
             Apply to Form
           </Button>
         )}

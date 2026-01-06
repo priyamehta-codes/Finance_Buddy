@@ -174,8 +174,13 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent className="overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 duration-300">
-            <div className="mt-2 mx-1 rounded-lg bg-sidebar-accent/50 p-3 border border-sidebar-border/50">
-              <CurrencyConverter compact />
+            <div className="mt-2 mx-1 rounded-lg bg-sidebar-accent/50 p-2 border border-sidebar-border/50">
+              <CurrencyConverter 
+                compact 
+                onApply={(amount) => {
+                  toast.success(`Converted: ${amount.toFixed(2)}`);
+                }}
+              />
             </div>
           </CollapsibleContent>
         </Collapsible>

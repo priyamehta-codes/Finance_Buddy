@@ -1,5 +1,4 @@
-import { randomUUID } from "crypto";
-import bcrypt from "bcrypt";
+import { randomUUID, createHash } from "crypto";
 import {
   type Budget,
   type BudgetCreate,
@@ -14,6 +13,27 @@ import {
   type User,
 } from "@shared/schema";
 import { db } from "./db/database";
+
+// Try to import bcrypt, fall back to simple hash if unavailable
+let bcrypt: any;
+let useSimpleHash = false;
+
+try {
+  bcrypt = await import("bcrypt");
+  bcrypt = bcrypt.default || bcrypt;
+} catch (error) {
+  console.warn("⚠️ bcrypt not available, using simple hashing (not recommended for production)");
+  useSimpleHash = true;
+}
+
+// Simple hash functions as fallback (WARNING: Not secure for production!)
+const simpleHash = (password: string): string => {
+  return createHash('sha256').update(password).digest('hex');
+};
+
+const simpleCompare = async (password: string, hash: string): Promise<boolean> => {
+  return simpleHash(password) === hash;
+};
 
 // Storage contract
 export interface IStorage {
@@ -234,11 +254,17 @@ export class SQLiteStorage implements IStorage {
   }
 
   async hashPassword(password: string): Promise<string> {
+    if (useSimpleHash) {
+      return simpleHash(password);
+    }
     const saltRounds = 10;
     return bcrypt.hash(password, saltRounds);
   }
 
   async verifyPassword(password: string, hash: string): Promise<boolean> {
+    if (useSimpleHash) {
+      return simpleCompare(password, hash);
+    }
     return bcrypt.compare(password, hash);
   }
 

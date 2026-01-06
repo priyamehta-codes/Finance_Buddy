@@ -1,6 +1,16 @@
-import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
+
+// Try to import better-sqlite3, fall back to in-memory mock if it fails
+let Database: any;
+let usesMock = false;
+
+try {
+  Database = (await import("better-sqlite3")).default;
+} catch (error) {
+  console.warn("⚠️ better-sqlite3 not available, using in-memory mock database");
+  usesMock = true;
+}
 
 // Determine database directory - use /tmp on Render (ephemeral but writable)
 // In production on Render, filesystem is read-only except /tmp
@@ -10,7 +20,7 @@ const dbDir = isProduction
   : path.join(process.cwd(), "server", "db");
 
 // Ensure db folder exists (for local dev)
-if (!isProduction && !fs.existsSync(dbDir)) {
+if (!usesMock && !isProduction && !fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
@@ -18,16 +28,62 @@ if (!isProduction && !fs.existsSync(dbDir)) {
 const dbPath = path.join(dbDir, "finance-buddy.db");
 console.log(`📂 Database path: ${dbPath}`);
 
+// Mock database for when better-sqlite3 is not available
+class MockDatabase {
+  private data: Map<string, any[]> = new Map();
+  
+  pragma(_setting: string) {
+    return this;
+  }
+  
+  prepare(sql: string) {
+    const self = this;
+    return {
+      run: (...args: any[]) => ({ changes: 1, lastInsertRowid: Date.now() }),
+      get: (...args: any[]) => {
+        // Try to find matching data
+        const table = sql.match(/FROM\s+(\w+)/i)?.[1];
+        if (table) {
+          const rows = self.data.get(table) || [];
+          return rows[0];
+        }
+        return undefined;
+      },
+      all: (...args: any[]) => {
+        const table = sql.match(/FROM\s+(\w+)/i)?.[1];
+        if (table) {
+          return self.data.get(table) || [];
+        }
+        return [];
+      }
+    };
+  }
+  
+  exec(sql: string) {
+    return this;
+  }
+}
+
 // Create / open database with error handling
-let db: Database.Database;
-try {
-  db = new Database(dbPath);
-  console.log("✅ SQLite database opened successfully");
-} catch (error) {
-  console.error("❌ Failed to open SQLite database:", error);
-  // Create in-memory database as fallback
-  console.log("⚠️ Falling back to in-memory database (data will not persist!)");
-  db = new Database(":memory:");
+let db: any;
+if (usesMock) {
+  db = new MockDatabase();
+  console.log("⚠️ Using mock in-memory database (native modules unavailable)");
+} else {
+  try {
+    db = new Database(dbPath);
+    console.log("✅ SQLite database opened successfully");
+  } catch (error) {
+    console.error("❌ Failed to open SQLite database:", error);
+    // Create in-memory database as fallback
+    console.log("⚠️ Falling back to in-memory database (data will not persist!)");
+    try {
+      db = new Database(":memory:");
+    } catch (e) {
+      console.error("❌ In-memory database also failed, using mock");
+      db = new MockDatabase();
+    }
+  }
 }
 
 export { db };

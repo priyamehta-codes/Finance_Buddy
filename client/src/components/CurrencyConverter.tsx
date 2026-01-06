@@ -134,131 +134,136 @@ export function CurrencyConverter({
 
   const currencies: Currency[] = ['USD', 'INR', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF'];
 
-  // Compact mode for sidebar
+  // Compact mode for sidebar or utility panel
   if (compact) {
     return (
-      <div className="space-y-3">
-        {/* Amount Input */}
-        <div className="space-y-1">
-          <Label className="text-xs text-sidebar-foreground/70">Amount</Label>
-          <Input
-            type="text"
-            placeholder="Enter amount"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="h-8 text-sm bg-sidebar-accent/30 border-sidebar-border text-sidebar-foreground placeholder:text-sidebar-foreground/40"
-          />
-        </div>
-
-        {/* Currency Selection */}
-        <div className="grid grid-cols-2 gap-2">
+      <Card className="w-full">
+        <CardHeader className="pb-2 pt-3">
+          <CardTitle className="text-sm">Currency Converter</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 p-3 pt-0">
+          {/* Amount Input */}
           <div className="space-y-1">
-            <Label className="text-xs text-sidebar-foreground/70">From</Label>
-            <Select value={from} onValueChange={(value) => setFrom(value as Currency)}>
-              <SelectTrigger className="h-8 text-xs bg-sidebar-accent/30 border-sidebar-border text-sidebar-foreground">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {currencies.map((currency) => (
-                  <SelectItem key={currency} value={currency} className="text-xs">
-                    {currency} {CURRENCY_SYMBOLS[currency]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="text-xs">Amount</Label>
+            <Input
+              type="text"
+              placeholder="Enter amount"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="h-8 text-sm"
+            />
           </div>
 
-          <div className="space-y-1">
-            <Label className="text-xs text-sidebar-foreground/70">To</Label>
-            <Select value={to} onValueChange={(value) => setTo(value as Currency)}>
-              <SelectTrigger className="h-8 text-xs bg-sidebar-accent/30 border-sidebar-border text-sidebar-foreground">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {currencies.map((currency) => (
-                  <SelectItem key={currency} value={currency} className="text-xs">
-                    {currency} {CURRENCY_SYMBOLS[currency]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Swap Button */}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleSwap}
-          className="w-full h-7 text-xs bg-sidebar-accent/30 border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent transition-all duration-200"
-        >
-          <ArrowRightLeft className="h-3 w-3 mr-1" />
-          Swap
-        </Button>
-
-        {/* Result */}
-        {converted !== null && (
-          <div className="bg-sidebar-accent/50 p-2 rounded-md space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
-            <div className="text-xs text-sidebar-foreground/70">
-              {formatCurrency(parseCurrencyInput(amount), from)} =
+          {/* Currency Selection */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">From</Label>
+              <Select value={from} onValueChange={(value) => setFrom(value as Currency)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-[9999]" position="popper" sideOffset={4}>
+                  {currencies.map((currency) => (
+                    <SelectItem key={currency} value={currency} className="text-xs">
+                      {currency} {CURRENCY_SYMBOLS[currency]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="text-lg font-bold text-sidebar-foreground">
-              {formatCurrency(converted, to)}
+
+            <div className="space-y-1">
+              <Label className="text-xs">To</Label>
+              <Select value={to} onValueChange={(value) => setTo(value as Currency)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-[9999]" position="popper" sideOffset={4}>
+                  {currencies.map((currency) => (
+                    <SelectItem key={currency} value={currency} className="text-xs">
+                      {currency} {CURRENCY_SYMBOLS[currency]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            {rate && (
-              <div className="flex items-center gap-1 text-[10px] text-sidebar-foreground/50">
-                {isStale && <WifiOff className="h-3 w-3 text-amber-500" />}
-                <span>1 {from} = {rate.toFixed(4)} {to}</span>
-              </div>
-            )}
-            {isStale && lastUpdate && (
-              <div className="flex items-center gap-1 text-[10px] text-amber-500">
-                <AlertCircle className="h-3 w-3" />
-                <span>Cached rate ({getTimeSinceUpdate(lastUpdate)})</span>
-              </div>
-            )}
           </div>
-        )}
 
-        {/* Copy Button */}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleCopyResult}
-          disabled={converted === null}
-          className="w-full h-7 text-xs bg-sidebar-accent/30 border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent transition-all duration-200"
-        >
-          {copied ? (
-            <>
-              <Check className="h-3 w-3 mr-1" />
-              Copied!
-            </>
-          ) : (
-            <>
-              <Copy className="h-3 w-3 mr-1" />
-              Copy Result
-            </>
-          )}
-        </Button>
-
-        {/* Apply to Form Button */}
-        {onApply && (
+          {/* Swap Button */}
           <Button
             size="sm"
-            onClick={handleApply}
-            disabled={converted === null}
-            className="w-full h-7 text-xs transition-all duration-200"
+            variant="outline"
+            onClick={handleSwap}
+            className="w-full h-7 text-xs"
           >
-            Apply to Form
+            <ArrowRightLeft className="h-3 w-3 mr-1" />
+            Swap
           </Button>
-        )}
 
-        {isLoading && (
-          <div className="text-[10px] text-sidebar-foreground/50 text-center animate-pulse">
-            Fetching rates...
-          </div>
-        )}
-      </div>
+          {/* Result */}
+          {converted !== null && (
+            <div className="bg-muted p-2 rounded-md space-y-1">
+              <div className="text-xs text-muted-foreground">
+                {formatCurrency(parseCurrencyInput(amount), from)} =
+              </div>
+              <div className="text-lg font-bold">
+                {formatCurrency(converted, to)}
+              </div>
+              {rate && (
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  {isStale && <WifiOff className="h-3 w-3 text-amber-500" />}
+                  <span>1 {from} = {rate.toFixed(4)} {to}</span>
+                </div>
+              )}
+              {isStale && lastUpdate && (
+                <div className="flex items-center gap-1 text-[10px] text-amber-500">
+                  <AlertCircle className="h-3 w-3" />
+                  <span>Cached rate ({getTimeSinceUpdate(lastUpdate)})</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Copy Button */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleCopyResult}
+            disabled={converted === null}
+            className="w-full h-7 text-xs"
+          >
+            {copied ? (
+              <>
+                <Check className="h-3 w-3 mr-1" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Copy className="h-3 w-3 mr-1" />
+                Copy Result
+              </>
+            )}
+          </Button>
+
+          {/* Apply to Form Button */}
+          {onApply && (
+            <Button
+              size="sm"
+              onClick={handleApply}
+              disabled={converted === null}
+              className="w-full h-8 text-sm"
+            >
+              Apply to Form
+            </Button>
+          )}
+
+          {isLoading && (
+            <div className="text-[10px] text-muted-foreground text-center animate-pulse">
+              Fetching rates...
+            </div>
+          )}
+        </CardContent>
+      </Card>
     );
   }
 
