@@ -2,17 +2,35 @@ import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
 
-// Ensure db folder exists
-const dbDir = path.join(process.cwd(), "server", "db");
-if (!fs.existsSync(dbDir)) {
+// Determine database directory - use /tmp on Render (ephemeral but writable)
+// In production on Render, filesystem is read-only except /tmp
+const isProduction = process.env.NODE_ENV === "production";
+const dbDir = isProduction 
+  ? "/tmp" 
+  : path.join(process.cwd(), "server", "db");
+
+// Ensure db folder exists (for local dev)
+if (!isProduction && !fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
 // Database file path
 const dbPath = path.join(dbDir, "finance-buddy.db");
+console.log(`📂 Database path: ${dbPath}`);
 
-// Create / open database
-export const db = new Database(dbPath);
+// Create / open database with error handling
+let db: Database.Database;
+try {
+  db = new Database(dbPath);
+  console.log("✅ SQLite database opened successfully");
+} catch (error) {
+  console.error("❌ Failed to open SQLite database:", error);
+  // Create in-memory database as fallback
+  console.log("⚠️ Falling back to in-memory database (data will not persist!)");
+  db = new Database(":memory:");
+}
+
+export { db };
 
 // Enable foreign keys so child rows are purged with the parent user
 db.pragma("foreign_keys = ON");
