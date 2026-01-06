@@ -86,4 +86,20 @@ db.prepare(`
 
 db.prepare(`CREATE INDEX IF NOT EXISTS idx_budgets_user ON budgets(user_id)`).run();
 
+// =======================
+// USER SETTINGS TABLE (stores preferences like currency)
+// =======================
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS user_settings (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL UNIQUE,
+    preferred_currency TEXT DEFAULT 'USD',
+    monthly_spending_limit REAL DEFAULT 3000,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )
+`).run();
+
+db.prepare(`CREATE INDEX IF NOT EXISTS idx_user_settings_user ON user_settings(user_id)`).run();
+
 console.log("✅ Database initialized at:", dbPath);

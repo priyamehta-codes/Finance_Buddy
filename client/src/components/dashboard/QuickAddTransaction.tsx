@@ -10,12 +10,14 @@ import { cn } from "@/lib/utils";
 import { getCurrencySymbol } from "@/lib/currency";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { MiniCalculator } from "@/components/MiniCalculator";
+import { toast } from "sonner";
 
 export function QuickAddTransaction() {
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
+  const [showApplyHint, setShowApplyHint] = useState(false);
   const user = useStore((state) => state.user);
   
   const addTransaction = useStore((state) => state.addTransaction);
@@ -24,6 +26,22 @@ export function QuickAddTransaction() {
   const setLastCategory = useStore((state) => state.setLastCategory);
   
   const amountInputRef = useRef<HTMLInputElement>(null);
+
+  // Listen for applyAmount event from calculator
+  useEffect(() => {
+    const handleApplyAmount = (e: CustomEvent) => {
+      const appliedAmount = e.detail.amount;
+      if (typeof appliedAmount === 'number' && appliedAmount > 0) {
+        setAmount(appliedAmount.toFixed(2));
+        amountInputRef.current?.focus();
+        setShowApplyHint(true);
+        setTimeout(() => setShowApplyHint(false), 3000);
+      }
+    };
+
+    window.addEventListener('applyAmount', handleApplyAmount as EventListener);
+    return () => window.removeEventListener('applyAmount', handleApplyAmount as EventListener);
+  }, []);
 
   const filteredCategories = useMemo(
     () => categories.filter((c) => c.type === type),
@@ -126,7 +144,10 @@ export function QuickAddTransaction() {
                 min="0"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="pl-7 text-lg font-semibold tracking-tight"
+                className={cn(
+                  "pl-7 text-lg font-semibold tracking-tight transition-all duration-300",
+                  showApplyHint && "ring-2 ring-primary/50 bg-primary/5"
+                )}
               />
               <Sheet>
                 <SheetTrigger asChild>
@@ -154,6 +175,11 @@ export function QuickAddTransaction() {
                 </SheetContent>
               </Sheet>
             </div>
+            {showApplyHint && (
+              <p className="text-xs text-primary animate-in fade-in slide-in-from-top-1">
+                ✓ Amount applied from calculator
+              </p>
+            )}
           </div>
 
           {/* Category Dropdown */}

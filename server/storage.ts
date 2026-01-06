@@ -23,7 +23,12 @@ export interface IStorage {
   verifyPassword(password: string, hash: string): Promise<boolean>;
   hashPassword(password: string): Promise<string>;
 
-  listTransactions(userId: string): Promise<Transaction[]>;
+  // User settings
+  getUserSettings(userId: string): Promise<{ preferred_currency: string; monthly_spending_limit: number } | null>;
+  saveUserSettings(userId: string, settings: { preferred_currency?: string; monthly_spending_limit?: number }): Promise<{ preferred_currency: string; monthly_spending_limit: number }>;
+
+  // Transactions with search
+  listTransactions(userId: string, searchQuery?: string, limit?: number): Promise<Transaction[]>;
   createTransaction(userId: string, input: TransactionCreate): Promise<Transaction>;
   updateTransaction(userId: string, id: string, input: TransactionUpdate): Promise<Transaction | undefined>;
   deleteTransaction(userId: string, id: string): Promise<boolean>;
@@ -65,6 +70,31 @@ export class SQLiteStorage implements IStorage {
   private listTransactionsStmt = db.prepare(
     `SELECT id, user_id, type, amount, category, description, created_at FROM transactions WHERE user_id = @user_id ORDER BY datetime(created_at) DESC`
   );
+
+  private searchTransactionsStmt = db.prepare(
+    `SELECT id, user_id, type, amount, category, description, created_at FROM transactions 
+     WHERE user_id = @user_id 
+       AND (description LIKE @search OR category LIKE @search)
+     ORDER BY datetime(created_at) DESC 
+     LIMIT @limit`
+  );
+
+  private getUserSettingsStmt = db.prepare(
+    `SELECT preferred_currency, monthly_spending_limit FROM user_settings WHERE user_id = @user_id LIMIT 1`
+  );
+
+  private insertUserSettingsStmt = db.prepare(`
+    INSERT INTO user_settings (id, user_id, preferred_currency, monthly_spending_limit)
+    VALUES (@id, @user_id, @preferred_currency, @monthly_spending_limit)
+  `);
+
+  private updateUserSettingsStmt = db.prepare(`
+    UPDATE user_settings 
+    SET preferred_currency = COALESCE(@preferred_currency, preferred_currency),
+        monthly_spending_limit = COALESCE(@monthly_spending_limit, monthly_spending_limit),
+        updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = @user_id
+  `);
 
   private insertTransactionStmt = db.prepare(`
     INSERT INTO transactions (id, user_id, type, amount, category, description, created_at)
@@ -242,8 +272,44 @@ export class SQLiteStorage implements IStorage {
     };
   }
 
+  // User Settings
+  async getUserSettings(userId: string): Promise<{ preferred_currency: string; monthly_spending_limit: number } | null> {
+    const row = this.getUserSettingsStmt.get({ user_id: userId }) as { preferred_currency: string; monthly_spending_limit: number } | undefined;
+    return row || null;
+  }
+
+  async saveUserSettings(userId: string, settings: { preferred_currency?: string; monthly_spending_limit?: number }): Promise<{ preferred_currency: string; monthly_spending_limit: number }> {
+    const existing = await this.getUserSettings(userId);
+    
+    if (existing) {
+      this.updateUserSettingsStmt.run({
+        user_id: userId,
+        preferred_currency: settings.preferred_currency ?? null,
+        monthly_spending_limit: settings.monthly_spending_limit ?? null,
+      });
+    } else {
+      const id = randomUUID();
+      this.insertUserSettingsStmt.run({
+        id,
+        user_id: userId,
+        preferred_currency: settings.preferred_currency || 'USD',
+        monthly_spending_limit: settings.monthly_spending_limit || 3000,
+      });
+    }
+    
+    return (await this.getUserSettings(userId))!;
+  }
+
   // Transactions
-  async listTransactions(userId: string): Promise<Transaction[]> {
+  async listTransactions(userId: string, searchQuery?: string, limit?: number): Promise<Transaction[]> {
+    if (searchQuery && searchQuery.trim()) {
+      const rows = this.searchTransactionsStmt.all({ 
+        user_id: userId, 
+        search: `%${searchQuery.trim()}%`,
+        limit: limit || 100
+      });
+      return rows.map(this.mapRowToTransaction);
+    }
     const rows = this.listTransactionsStmt.all({ user_id: userId });
     return rows.map(this.mapRowToTransaction);
   }

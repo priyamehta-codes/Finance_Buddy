@@ -85,19 +85,22 @@ interface AppState {
 
   setLastCategory: (category: string | null) => void;
   updateUser: (updates: Partial<User>) => void;
-  setCurrency: (currency: Currency) => void;
-  setMonthlySpendingLimit: (limit: number) => void;
+  setCurrency: (currency: Currency) => Promise<void>;
+  setMonthlySpendingLimit: (limit: number) => Promise<void>;
 }
 
 const DEFAULT_CATEGORIES: Category[] = [
   { id: "1", name: "Salary", type: "income", color: "#10b981" },
   { id: "2", name: "Freelance", type: "income", color: "#3b82f6" },
   { id: "3", name: "Investments", type: "income", color: "#8b5cf6" },
-  { id: "4", name: "Rent", type: "expense", color: "#ef4444" },
-  { id: "5", name: "Groceries", type: "expense", color: "#f97316" },
-  { id: "6", name: "Utilities", type: "expense", color: "#eab308" },
-  { id: "7", name: "Transport", type: "expense", color: "#6366f1" },
-  { id: "8", name: "Entertainment", type: "expense", color: "#ec4899" },
+  { id: "4", name: "Side Gig", type: "income", color: "#06b6d4" },
+  { id: "5", name: "Passive Income", type: "income", color: "#14b8a6" },
+  { id: "6", name: "Rent", type: "expense", color: "#ef4444" },
+  { id: "7", name: "Groceries", type: "expense", color: "#f97316" },
+  { id: "8", name: "Food / Eating Out", type: "expense", color: "#fb923c" },
+  { id: "9", name: "Utilities", type: "expense", color: "#eab308" },
+  { id: "10", name: "Transport", type: "expense", color: "#6366f1" },
+  { id: "11", name: "Entertainment", type: "expense", color: "#ec4899" },
 ];
 
 const deriveNameFromEmail = (email: string) => {
@@ -105,14 +108,35 @@ const deriveNameFromEmail = (email: string) => {
   return prefix ? prefix.charAt(0).toUpperCase() + prefix.slice(1) : "Money Manager";
 };
 
-const hydrateUser = (user: User | null): User | null => {
+// Detect default currency from browser locale
+const getDefaultCurrency = (): Currency => {
+  try {
+    const locale = navigator.language || 'en-US';
+    const currencyMap: Record<string, Currency> = {
+      'en-US': 'USD',
+      'en-IN': 'INR',
+      'hi-IN': 'INR',
+      'en-GB': 'GBP',
+      'de-DE': 'EUR',
+      'fr-FR': 'EUR',
+      'es-ES': 'EUR',
+      'it-IT': 'EUR',
+    };
+    return currencyMap[locale] || 'USD';
+  } catch {
+    return 'USD';
+  }
+};
+
+const hydrateUser = (user: any): User | null => {
   if (!user) return null;
-  const currency = user.currency || "USD";
+  // Use server-provided currency preference, then browser locale, then USD
+  const currency = (user.preferred_currency || user.currency || getDefaultCurrency()) as Currency;
   return {
     ...user,
     name: user.name || deriveNameFromEmail(user.email),
     currency,
-    monthlySpendingLimit: user.monthlySpendingLimit || 3000,
+    monthlySpendingLimit: user.monthly_spending_limit || user.monthlySpendingLimit || 3000,
   };
 };
 
@@ -373,9 +397,29 @@ export const useStore = create<AppState>((set, get) => ({
   updateUser: (updates) =>
     set((state) => ({ user: state.user ? { ...state.user, ...updates } : null })),
 
-  setCurrency: (currency) =>
-    set((state) => ({ user: state.user ? { ...state.user, currency } : null })),
+  setCurrency: async (currency) => {
+    set((state) => ({ user: state.user ? { ...state.user, currency } : null }));
+    // Persist to server
+    try {
+      await fetchJson("/api/user/settings", {
+        method: "POST",
+        body: JSON.stringify({ preferred_currency: currency }),
+      });
+    } catch (error) {
+      console.error("Failed to save currency preference:", error);
+    }
+  },
 
-  setMonthlySpendingLimit: (limit) =>
-    set((state) => ({ user: state.user ? { ...state.user, monthlySpendingLimit: limit } : null })),
+  setMonthlySpendingLimit: async (limit) => {
+    set((state) => ({ user: state.user ? { ...state.user, monthlySpendingLimit: limit } : null }));
+    // Persist to server
+    try {
+      await fetchJson("/api/user/settings", {
+        method: "POST",
+        body: JSON.stringify({ monthly_spending_limit: limit }),
+      });
+    } catch (error) {
+      console.error("Failed to save spending limit:", error);
+    }
+  },
 }));

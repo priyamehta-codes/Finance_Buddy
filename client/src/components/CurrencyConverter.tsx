@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowRightLeft, Copy, Check, Zap } from 'lucide-react';
+import { ArrowRightLeft, Copy, Check, Zap, WifiOff, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   type Currency,
@@ -45,6 +45,8 @@ export function CurrencyConverter({
   const [copied, setCopied] = useState(false);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const [provider, setProvider] = useState('exchangerate.host');
+  const [isStale, setIsStale] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const PRESET_AMOUNTS = [100, 500, 1000];
 
@@ -54,19 +56,26 @@ export function CurrencyConverter({
     if (!numAmount || from === to) {
       setConverted(numAmount);
       setRate(1);
+      setError(null);
+      setIsStale(false);
       return;
     }
 
     setIsLoading(true);
+    setError(null);
     try {
       const result = await convertCurrency(numAmount, from, to);
       setConverted(result.converted);
       setRate(result.rate);
       setLastUpdate(result.timestamp);
       setProvider(result.provider);
-    } catch (error) {
-      console.error('Conversion failed:', error);
-      toast.error('Failed to fetch exchange rate');
+      // Check if data is stale (provider includes "stale")
+      setIsStale(result.provider.includes('stale'));
+    } catch (err) {
+      console.error('Conversion failed:', err);
+      setError('Failed to fetch rates');
+      toast.error('Using cached rate - unable to refresh');
+      setIsStale(true);
     } finally {
       setIsLoading(false);
     }
@@ -107,16 +116,18 @@ export function CurrencyConverter({
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      toast.success('Copied to clipboard!');
+      toast.success(`Copied ${text}`);
     } catch (error) {
       toast.error('Failed to copy');
     }
   };
 
   const handleApply = () => {
-    const numAmount = parseCurrencyInput(amount);
+    const numAmount = converted ?? parseCurrencyInput(amount);
     if (onApply && numAmount > 0) {
       onApply(numAmount, from, to);
+      // Dispatch event for forms listening
+      window.dispatchEvent(new CustomEvent('applyAmount', { detail: { amount: numAmount } }));
       toast.success('Amount applied!');
     }
   };
@@ -195,8 +206,15 @@ export function CurrencyConverter({
               {formatCurrency(converted, to)}
             </div>
             {rate && (
-              <div className="text-[10px] text-sidebar-foreground/50">
-                1 {from} = {rate.toFixed(4)} {to}
+              <div className="flex items-center gap-1 text-[10px] text-sidebar-foreground/50">
+                {isStale && <WifiOff className="h-3 w-3 text-amber-500" />}
+                <span>1 {from} = {rate.toFixed(4)} {to}</span>
+              </div>
+            )}
+            {isStale && lastUpdate && (
+              <div className="flex items-center gap-1 text-[10px] text-amber-500">
+                <AlertCircle className="h-3 w-3" />
+                <span>Cached rate ({getTimeSinceUpdate(lastUpdate)})</span>
               </div>
             )}
           </div>
@@ -222,6 +240,18 @@ export function CurrencyConverter({
             </>
           )}
         </Button>
+
+        {/* Apply to Form Button */}
+        {onApply && (
+          <Button
+            size="sm"
+            onClick={handleApply}
+            disabled={converted === null}
+            className="w-full h-7 text-xs transition-all duration-200"
+          >
+            Apply to Form
+          </Button>
+        )}
 
         {isLoading && (
           <div className="text-[10px] text-sidebar-foreground/50 text-center animate-pulse">
@@ -332,13 +362,17 @@ export function CurrencyConverter({
               {formatCurrency(converted, to)}
             </div>
             {rate && (
-              <div className="text-xs text-muted-foreground">
-                1 {from} = {rate.toFixed(4)} {to}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                {isStale && <WifiOff className="h-3 w-3 text-amber-500" />}
+                <span>1 {from} = {rate.toFixed(4)} {to}</span>
               </div>
             )}
             {lastUpdate && (
-              <div className="text-xs text-muted-foreground">
-                Updated {getTimeSinceUpdate(lastUpdate)} • {provider}
+              <div className={`flex items-center gap-1 text-xs ${isStale ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                {isStale && <AlertCircle className="h-3 w-3" />}
+                <span>
+                  {isStale ? 'Using cached rate' : 'Updated'} {getTimeSinceUpdate(lastUpdate)} • {provider}
+                </span>
               </div>
             )}
           </div>

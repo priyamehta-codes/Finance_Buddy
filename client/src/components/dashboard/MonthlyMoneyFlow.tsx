@@ -155,23 +155,23 @@ export function MonthlyMoneyFlow() {
         </CardHeader>
 
         <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as "pay" | "receive")} className="px-6 pb-0">
-          <TabsList className="w-full grid grid-cols-2 bg-white/70 dark:bg-black/30 p-1.5 mb-4 border border-border/40 rounded-xl shadow-md h-12 items-center">
+          <TabsList className="w-full grid grid-cols-2 bg-white/70 dark:bg-black/30 p-1.5 mb-4 border border-border/40 rounded-xl shadow-md h-14 items-center">
             <TabsTrigger 
               value="pay"
               className={cn(
-                "relative h-9 text-sm font-semibold transition-all duration-250 overflow-hidden rounded-lg",
+                "relative h-10 text-sm font-semibold transition-all duration-250 overflow-hidden rounded-lg",
                 activeTab === "pay"
-                  ? "bg-white dark:bg-slate-900/60 text-amber-700 dark:text-amber-400 shadow-lg border border-amber-300/60"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-white dark:bg-slate-900/60 text-amber-700 dark:text-amber-400 shadow-lg border border-amber-300/60 shadow-amber-200/30 dark:shadow-amber-900/20"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-white/5"
               )}
             >
               {activeTab === "pay" && (
-                <div className="absolute inset-0 bg-gradient-to-br from-amber-300/10 via-transparent to-amber-200/5 pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-br from-amber-300/15 via-transparent to-amber-200/10 pointer-events-none" />
               )}
-              <span className="relative flex items-center justify-center gap-1.5">
+              <span className="relative flex items-center justify-center gap-2">
                 <span className={cn(
-                  "inline-block h-2 w-2 rounded-full transition-all duration-250",
-                  activeTab === "pay" ? "bg-amber-500 shadow-[0_0_10px_rgba(217,119,6,0.35)]" : "bg-muted-foreground/30"
+                  "inline-block h-2.5 w-2.5 rounded-full transition-all duration-250",
+                  activeTab === "pay" ? "bg-amber-500 shadow-[0_0_12px_rgba(217,119,6,0.45)]" : "bg-muted-foreground/30"
                 )} />
                 To Pay
               </span>
@@ -180,19 +180,19 @@ export function MonthlyMoneyFlow() {
             <TabsTrigger 
               value="receive"
               className={cn(
-                "relative h-9 text-sm font-semibold transition-all duration-250 overflow-hidden rounded-lg",
+                "relative h-10 text-sm font-semibold transition-all duration-250 overflow-hidden rounded-lg",
                 activeTab === "receive"
-                  ? "bg-white dark:bg-slate-900/60 text-emerald-700 dark:text-emerald-400 shadow-lg border border-emerald-300/60"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-white dark:bg-slate-900/60 text-emerald-700 dark:text-emerald-400 shadow-lg border border-emerald-300/60 shadow-emerald-200/30 dark:shadow-emerald-900/20"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-white/5"
               )}
             >
               {activeTab === "receive" && (
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-300/10 via-transparent to-emerald-200/5 pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-300/15 via-transparent to-emerald-200/10 pointer-events-none" />
               )}
-              <span className="relative flex items-center justify-center gap-1.5">
+              <span className="relative flex items-center justify-center gap-2">
                 <span className={cn(
-                  "inline-block h-2 w-2 rounded-full transition-all duration-250",
-                  activeTab === "receive" ? "bg-emerald-500 shadow-[0_0_10px_rgba(34,197,94,0.35)]" : "bg-muted-foreground/30"
+                  "inline-block h-2.5 w-2.5 rounded-full transition-all duration-250",
+                  activeTab === "receive" ? "bg-emerald-500 shadow-[0_0_12px_rgba(34,197,94,0.45)]" : "bg-muted-foreground/30"
                 )} />
                 To Receive
               </span>

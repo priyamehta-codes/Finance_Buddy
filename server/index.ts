@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
-import MemoryStore from "memorystore";
+import connectPgSimple from "connect-pg-simple";
+import pg from "pg";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -17,8 +18,23 @@ declare module "http" {
   }
 }
 
-// Initialize session store
-const MemStore = MemoryStore(session);
+// Initialize PostgreSQL session store for persistent sessions across restarts
+const PgSession = connectPgSimple(session);
+
+// Create a connection pool for sessions (uses DATABASE_URL from Render)
+const sessionPool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+});
+
+// Log session store status
+sessionPool.on("connect", () => {
+  console.log("✅ PostgreSQL session store connected");
+});
+
+sessionPool.on("error", (err) => {
+  console.error("❌ PostgreSQL session pool error:", err);
+});
 
 app.use(
   express.json({
@@ -30,13 +46,15 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
-// Session configuration
+// Session configuration with PostgreSQL persistence
 app.use(
   session({
-    store: new MemStore({
-      checkPeriod: 86400000,
+    store: new PgSession({
+      pool: sessionPool,
+      tableName: "user_sessions", // Custom table name to avoid conflicts
+      createTableIfMissing: true, // Auto-create session table on startup
     }),
-    secret: process.env.SESSION_SECRET || "finance-buddy-secret-key",
+    secret: process.env.SESSION_SECRET || "finance-buddy-secret-key-change-in-prod",
     resave: false,
     saveUninitialized: false,
     cookie: {

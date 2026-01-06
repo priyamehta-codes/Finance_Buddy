@@ -180,11 +180,58 @@ export async function registerRoutes(
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Return user without password
+      // Get user settings (currency preference)
+      const settings = await storage.getUserSettings(req.session.userId);
+
+      // Return user without password, with settings
       const { password: _, ...userWithoutPassword } = user;
-      res.json({ user: userWithoutPassword });
+      res.json({ 
+        user: {
+          ...userWithoutPassword,
+          preferred_currency: settings?.preferred_currency || 'USD',
+          monthly_spending_limit: settings?.monthly_spending_limit || 3000,
+        }
+      });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // User settings endpoints
+  app.get("/api/user/settings", async (req, res) => {
+    const userId = requireAuth(req, res);
+    if (!userId) return;
+    
+    try {
+      const settings = await storage.getUserSettings(userId);
+      res.json(settings || { preferred_currency: 'USD', monthly_spending_limit: 3000 });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch settings" });
+    }
+  });
+
+  app.post("/api/user/settings", async (req, res) => {
+    const userId = requireAuth(req, res);
+    if (!userId) return;
+    
+    try {
+      const { preferred_currency, monthly_spending_limit } = req.body;
+      
+      // Validate currency
+      const validCurrencies = ['USD', 'INR', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF'];
+      if (preferred_currency && !validCurrencies.includes(preferred_currency)) {
+        return res.status(400).json({ message: "Invalid currency" });
+      }
+      
+      const settings = await storage.saveUserSettings(userId, {
+        preferred_currency,
+        monthly_spending_limit: typeof monthly_spending_limit === 'number' ? monthly_spending_limit : undefined,
+      });
+      
+      res.json(settings);
+    } catch (error) {
+      console.error("Save settings error:", error);
+      res.status(500).json({ message: "Failed to save settings" });
     }
   });
 
@@ -192,7 +239,11 @@ export async function registerRoutes(
   app.get("/api/transactions", async (req, res) => {
     const userId = requireAuth(req, res);
     if (!userId) return;
-    const rows = await storage.listTransactions(userId);
+    
+    const searchQuery = req.query.q as string | undefined;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+    
+    const rows = await storage.listTransactions(userId, searchQuery, limit);
     res.json(rows);
   });
 

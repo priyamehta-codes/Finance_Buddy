@@ -18,7 +18,7 @@ import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CurrencyConverter } from "@/components/CurrencyConverter";
 
@@ -75,6 +75,15 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     }
   };
 
+  const handleNavClick = useCallback((href: string) => {
+    try {
+      navigate(href);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      toast.error('Navigation failed. Please try again.');
+    }
+  }, [navigate]);
+
   return (
     <>
       {/* Mobile overlay */}
@@ -128,19 +137,18 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                   </Badge>
                 </div>
               ) : (
-                <Link href={item.href}>
-                  <div
-                    className={cn(
-                      "flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:translate-x-1",
-                      isActive 
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm" 
-                        : "text-sidebar-foreground/70"
-                    )}
-                  >
-                    <Icon className="h-4 w-4 transition-transform duration-200" />
-                    {item.label}
-                  </div>
-                </Link>
+                <button
+                  onClick={() => handleNavClick(item.href)}
+                  className={cn(
+                    "flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:translate-x-1",
+                    isActive 
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm" 
+                      : "text-sidebar-foreground/70"
+                  )}
+                >
+                  <Icon className="h-4 w-4 transition-transform duration-200" />
+                  {item.label}
+                </button>
               )}
             </div>
           );
