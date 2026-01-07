@@ -7,9 +7,6 @@ import { rm, readFile } from "fs/promises";
 const allowlist = [
   "@google/generative-ai",
   "axios",
-  "bcrypt",
-  "better-sqlite3",
-  "connect-pg-simple",
   "cors",
   "date-fns",
   "drizzle-orm",
@@ -25,13 +22,29 @@ const allowlist = [
   "openai",
   "passport",
   "passport-local",
-  "pg",
   "stripe",
   "uuid",
   "ws",
   "xlsx",
   "zod",
   "zod-validation-error",
+];
+
+// Modules that must always be external (native modules and problematic deps)
+const alwaysExternal = [
+  // Native modules that can't be bundled
+  "better-sqlite3",
+  "bcrypt",
+  "pg",
+  "pg-native",
+  // Problematic dependencies from @mapbox/node-pre-gyp
+  "@mapbox/node-pre-gyp",
+  "mock-aws-s3",
+  "aws-sdk",
+  "nock",
+  // Other native/problematic modules
+  "bufferutil",
+  "utf-8-validate",
 ];
 
 async function buildAll() {
@@ -46,7 +59,13 @@ async function buildAll() {
     ...Object.keys(pkg.dependencies || {}),
     ...Object.keys(pkg.devDependencies || {}),
   ];
-  const externals = allDeps.filter((dep) => !allowlist.includes(dep));
+  // Filter out allowlisted deps, but always keep alwaysExternal as external
+  const externals = [
+    ...allDeps.filter((dep) => !allowlist.includes(dep)),
+    ...alwaysExternal,
+  ];
+  // Remove duplicates
+  const uniqueExternals = [...new Set(externals)];
 
   await esbuild({
     entryPoints: ["server/index.ts"],
@@ -58,8 +77,12 @@ async function buildAll() {
       "process.env.NODE_ENV": '"production"',
     },
     minify: true,
-    external: externals,
+    external: uniqueExternals,
     logLevel: "info",
+    // Handle .html files and other problematic imports
+    loader: {
+      ".html": "text",
+    },
   });
 }
 
