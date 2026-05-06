@@ -10,7 +10,7 @@ A modern, intuitive personal finance tracking application to help you manage you
 > Note: First load may take ~30 seconds (free tier cold start). Once loaded, it's fast!
 
 ---
-
+ 
 ## ✨ Features
 
 - **Dashboard Overview** - See your complete financial picture at a glance
